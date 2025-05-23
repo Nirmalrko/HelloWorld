@@ -621,4 +621,7 @@ if __name__ == '__main__':
     setup_database()
     # Development server configuration
     port = int(os.environ.get('PORT', 5000)) # Use PORT env var if available, else default to 5000
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # Debug mode should be False in production. 
+    # Set FLASK_DEBUG=true in your local environment if you need the debugger.
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
