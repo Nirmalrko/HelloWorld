@@ -1,0 +1,206 @@
+@font-face {
+    font-family: 'Minecraftia';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Minecraftia'), url('https://fonts.cdnfonts.com/s/31977/Minecraftia.woff') format('woff');
+}
+
+body {
+    background-color: #3B2712; /* Dark brown, like dirt or wood */
+    color: #DDDDDD; /* Light gray, for general text */
+    font-family: 'Minecraftia', monospace; /* Minecraft font with monospace fallback */
+    display: flex;
+    flex-direction: column; /* Changed for page layout */
+    min-height: 100vh; /* Ensure page takes full viewport height */
+    margin: 0; /* Remove default body margin */
+}
+
+.page-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Allows this container to grow and push footer down */
+}
+
+header {
+    background-color: #505050; /* Dark gray, like stone */
+    padding: 10px 20px;
+    text-align: center;
+    border-bottom: 4px solid #303030; /* Darker border for depth */
+}
+
+header h1 {
+    color: #FFFFFF; /* White text for header */
+    margin: 0;
+    font-size: 2em; /* Larger font for main title */
+}
+
+main.content-wrap {
+    flex-grow: 1; /* Ensures main content takes available space */
+    padding: 20px;
+    /* Added flex to center the #minecraft-container if it's not full width */
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center content like #minecraft-container horizontally */
+    justify-content: flex-start; /* Align content to the top */
+}
+
+footer {
+    background-color: #202020; /* Very dark gray, for footer */
+    color: #AAAAAA; /* Lighter gray for footer text */
+    padding: 10px 20px;
+    text-align: center;
+    border-top: 4px solid #303030; /* Darker border */
+    font-size: 0.9em; /* Slightly smaller font for footer */
+}
+
+/* Existing styles for the Minecraft-themed content box */
+#minecraft-container {
+    background-color: #808080; /* Medium gray, like smooth stone */
+    padding: 25px; 
+    border: 8px solid #505050; /* Darker gray border, like stone bricks */
+    width: 70%; /* Adjusted width for better fit in page layout */
+    max-width: 800px; /* Increased max-width */
+    /* The container itself will be centered by main.content-wrap's align-items */
+}
+
+#minecraft-container p {
+    color: #DDDDDD; /* Light gray text, consistent with body */
+    font-size: 24px; /* Large, blocky text */
+    text-align: center;
+    margin: 0; /* Reset default paragraph margins for cleaner look */
+    line-height: 1.5; /* Added for better readability */
+}
+
+#minecraft-container p + p { /* Add some space between paragraphs within the container */
+    margin-top: 15px;
+}
+
+/* General purpose container box, similar to #minecraft-container but as a class */
+.minecraft-container-box {
+    background-color: #808080; /* Medium gray, like smooth stone */
+    padding: 20px;
+    border: 8px solid #505050; /* Darker gray border */
+    max-width: 800px; /* Default max-width */
+    margin: 20px auto; /* Centering the box on the page */
+    text-align: left; /* Default text alignment for content within the box */
+    /* Note: #minecraft-container (the welcome message box) has width: 70% and text-align: center for its paragraphs */
+}
+.minecraft-container-box h2 { /* Styling for h2 within these boxes */
+    text-align: center; /* Center titles within these boxes */
+    color: #FFFFFF;
+    text-shadow: 2px 2px #303030;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+/* General Minecraft Button Style (used in nav and admin_upload.html) */
+.minecraft-button {
+    background-color: #707070; 
+    border: 3px solid #303030;
+    color: #FFFFFF;
+    padding: 10px 20px; /* Default padding */
+    font-family: 'Minecraftia', monospace;
+    font-size: 1em; /* Default font size */
+    cursor: pointer;
+    text-shadow: 2px 2px #303030;
+    box-shadow: 3px 3px 0px #505050; 
+    display: inline-block;
+    text-align: center;
+    text-decoration: none; /* Remove underline from <a> tags styled as buttons */
+}
+.minecraft-button:hover {
+    background-color: #909090;
+}
+.minecraft-button:active {
+    box-shadow: 1px 1px 0px #505050;
+    transform: translate(2px, 2px);
+}
+
+/* Navigation Specific Styles */
+header nav {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px; 
+    justify-content: center; 
+}
+header nav .minecraft-button { /* Style for buttons specifically within the header nav */
+    padding: 8px 15px; /* Adjusted padding for nav buttons */
+    font-size: 0.9em; /* Adjusted font size for nav buttons */
+}
+
+/* Search Input Styling */
+.minecraft-input {
+    background-color: #A0A0A0;
+    border: 3px solid #303030;
+    padding: 10px;
+    color: #202020; /* Dark text for light background */
+    font-family: 'Minecraftia', monospace;
+    font-size: 1em;
+    margin-right: 5px; /* Space before button */
+    box-shadow: inset 2px 2px 0px #505050; /* Inset shadow for depth */
+    flex-grow: 1; /* Allow input to take available space in a flex container (like a form) */
+}
+.minecraft-input::placeholder {
+    color: #404040;
+}
+
+/* Search Form Specific Flex Layout (if needed, or handle in HTML structure) */
+#search-form {
+    display: flex;
+    align-items: center; /* Align input and button nicely */
+    margin-bottom: 15px;
+}
+
+/* Products Grid Layout */
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Responsive grid */
+    gap: 20px; /* Space between product cards */
+    margin-top: 20px;
+}
+
+/* Product Card Styling */
+.product-card {
+    background-color: #707070; /* Stone-like background */
+    border: 4px solid #303030; /* Darker border */
+    padding: 15px;
+    text-align: center;
+    box-shadow: 3px 3px 0px #505050, -3px -3px 0px #909090; /* 3D block effect */
+    display: flex; /* Using flex for better internal alignment */
+    flex-direction: column;
+    justify-content: space-between; /* Distribute space, helps with varying description lengths */
+}
+.product-card .product-image {
+    width: 100%; /* Make image responsive within card */
+    max-width: 150px; /* Max image size */
+    height: 150px; /* Fixed height for uniform look */
+    object-fit: cover; /* Ensure image covers the area, might crop */
+    border: 3px solid #505050; /* Border around image */
+    margin-bottom: 10px;
+    background-color: #A0A0A0; /* Placeholder background for image area */
+    align-self: center; /* Center image within the card */
+}
+.product-card .product-name {
+    font-size: 1.2em;
+    color: #FFFFFF;
+    margin-top: 0;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px #303030;
+}
+.product-card .product-description {
+    font-size: 0.9em;
+    color: #DDDDDD;
+    margin-bottom: 10px;
+    min-height: 54px; /* Approx 3 lines with 1.5 line height if font-size is ~1em. Adjust as needed. */
+    flex-grow: 1; /* Allow description to take up available space */
+}
+.product-card .product-price {
+    font-size: 1.1em;
+    color: #FFFFA0; /* Yellowish for price */
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.product-card .product-stock {
+    font-size: 0.8em;
+    color: #CCCCCC;
+}

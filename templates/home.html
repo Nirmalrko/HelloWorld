@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Minecraft Store{% endblock %}
+
+{% block header_title %}Welcome to the Minecraft Store!{% endblock %}
+
+{% block content %}
+<div id="minecraft-container"> {# This was the original container from HelloWorld.html #}
+    <h2>Welcome, Adventurer!</h2>
+    <p>Your journey into a world of amazing Minecraft treasures begins now! We're busy stocking our shelves with the best gear, blocks, and unique items.</p>
+    <p>Soon, you'll be able to search for products and manage your inventory with our upcoming tools. Stay tuned!</p>
+</div>
+
+{# Product Search Area - Added Below Existing Welcome Message #}
+<div class="minecraft-container-box" id="product-search-area" style="margin-top: 30px;">
+    <h2>Search Our Wares!</h2>
+    <form id="search-form">
+        <input type="text" id="search-input" name="query" placeholder="Enter product name or description..." class="minecraft-input">
+        <button type="submit" class="minecraft-button">Search</button>
+    </form>
+    
+    <div id="search-results-count" style="margin-top: 15px; margin-bottom: 10px;">
+        <!-- Search count will appear here -->
+    </div>
+
+    <div id="product-results-container" class="products-grid">
+        <!-- Products will be dynamically loaded here -->
+        {# 
+        <div class="product-card">
+            <img src="https://via.placeholder.com/100x100.png?text=Product" alt="Product Image" class="product-image">
+            <h3 class="product-name">Sample Product</h3>
+            <p class="product-description">This is a cool Minecraft item.</p>
+            <p class="product-price">$9.99</p>
+            <p class="product-stock">Stock: 10</p>
+        </div>
+        #}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchForm = document.getElementById('search-form');
+        const searchInput = document.getElementById('search-input');
+        const resultsContainer = document.getElementById('product-results-container');
+        const resultsCountDiv = document.getElementById('search-results-count');
+
+        // escapeHtml function is now in static/js/utils.js and globally available
+
+        // Event delegation for "Add to Cart" buttons
+        resultsContainer.addEventListener('click', function(event) {
+            if (event.target.classList.contains('add-to-cart-btn')) {
+                const productCard = event.target.closest('.product-card');
+                const productId = productCard.dataset.productId;
+                
+                if (productId) {
+                    const originalButtonText = event.target.textContent;
+                    event.target.textContent = 'Adding...';
+                    event.target.disabled = true;
+
+                    fetch('/api/cart/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ product_id: parseInt(productId), quantity: 1 })
+                    })
+                    .then(response => response.json().then(data => ({ok: response.ok, data})))
+                    .then(result => {
+                        if (result.ok) {
+                            event.target.textContent = 'Added!';
+                            setTimeout(() => { // Reset button after a delay
+                                event.target.textContent = originalButtonText;
+                                event.target.disabled = false;
+                            }, 1500);
+                            
+                            if (typeof updateCartCountDisplay === 'function') { // Check if global func exists
+                                updateCartCountDisplay();
+                            } else {
+                                console.warn('updateCartCountDisplay function not found. Ensure base.html includes it.');
+                            }
+                        } else {
+                            alert(`Error: ${result.data.error || 'Could not add item.'}`);
+                            event.target.textContent = originalButtonText;
+                            event.target.disabled = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Add to cart error:', error);
+                        alert('Failed to add item to cart. Please try again.');
+                        event.target.textContent = originalButtonText;
+                        event.target.disabled = false;
+                    });
+                }
+            }
+        });
+
+        searchForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const query = searchInput.value.trim();
+            
+            resultsContainer.innerHTML = ''; // Clear previous results
+            resultsCountDiv.innerHTML = ''; // Clear previous count
+
+            if (query === '') {
+                resultsCountDiv.innerHTML = '<p>Please enter a search term.</p>';
+                return;
+            }
+
+            resultsCountDiv.innerHTML = '<p>Searching...</p>'; // Provide feedback
+
+            fetch(`/api/products/search?q=${encodeURIComponent(query)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(errData => {
+                            throw new Error(`HTTP error! Status: ${response.status}. Message: ${errData.error || 'Unknown server error'}`);
+                        }).catch(() => {
+                            throw new Error(`HTTP error! Status: ${response.status}. Could not retrieve error details.`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(products => {
+                    if (products.length === 0) {
+                        resultsCountDiv.innerHTML = '<p>No products found matching your search.</p>';
+                    } else {
+                        resultsCountDiv.innerHTML = `<p>Found ${products.length} product(s).</p>`;
+                        products.forEach(product => {
+                            const cardDiv = document.createElement('div');
+                            cardDiv.className = 'product-card';
+                            cardDiv.dataset.productId = product.id; // Set data-product-id
+
+                            const imageUrl = product.image_url ? escapeHtml(product.image_url) : 'https://via.placeholder.com/150x150.png?text=No+Image';
+                            const descriptionHtml = product.description ? `<p class="product-description">${escapeHtml(product.description)}</p>` : '<p class="product-description"><em>No description available.</em></p>';
+                            const stockInfo = product.stock_quantity !== null && product.stock_quantity !== undefined ? product.stock_quantity : 'N/A';
+
+                            cardDiv.innerHTML = `
+                                <img src="${imageUrl}" alt="${escapeHtml(product.name)}" class="product-image">
+                                <h3 class="product-name">${escapeHtml(product.name)}</h3>
+                                ${descriptionHtml}
+                                <p class="product-price">$${parseFloat(product.price).toFixed(2)}</p>
+                                <p class="product-stock">Stock: ${escapeHtml(stockInfo.toString())}</p>
+                                <button class="minecraft-button add-to-cart-btn">Add to Cart</button>
+                            `;
+                            resultsContainer.appendChild(cardDiv);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Search error:', error);
+                    resultsCountDiv.innerHTML = ''; // Clear "Searching..."
+                    resultsContainer.innerHTML = `<p class="message error" style="color: #d9534f; background-color: #f2dede; border: 1px solid #ebccd1; padding: 10px;">Error fetching products: ${escapeHtml(error.message)}. Please try again later.</p>`;
+                });
+        });
+    });
+</script>
+{% endblock %}
