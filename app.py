@@ -5,7 +5,9 @@ import os # For secret_key
 from datetime import timedelta # For session lifetime
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24) # Configure secret key for sessions
+# For production, FLASK_SECRET_KEY should be a strong, persistent random string.
+# If FLASK_SECRET_KEY is not set, os.urandom(24) is used as a fallback (suitable for dev).
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', os.urandom(24))
 app.permanent_session_lifetime = timedelta(days=7) # Optional: Configure session lifetime
 
 DATABASE_NAME = 'store.db' # Add this line
@@ -617,4 +619,9 @@ if __name__ == '__main__':
     # In a production environment, you'd run database_setup.py separately.
     from database_setup import setup_database
     setup_database()
-    app.run(debug=True)
+    # Development server configuration
+    port = int(os.environ.get('PORT', 5000)) # Use PORT env var if available, else default to 5000
+    # Debug mode should be False in production. 
+    # Set FLASK_DEBUG=true in your local environment if you need the debugger.
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
