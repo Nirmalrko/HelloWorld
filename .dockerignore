@@ -1,0 +1,34 @@
+# Python virtual environment
+venv/
+.venv/
+
+# Python bytecode and cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE / Editor specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git directory
+.git/
+.gitignore
+
+# Docker files (if they are not meant to be in the image itself, though Dockerfile is usually fine)
+# Dockerfile # Typically you don't ignore the Dockerfile itself
+
+# Other OS generated files
+.DS_Store
+Thumbs.db
+
+# Any local instance of the database if it's generated outside the main store.db
+# For instance, if you had a backup or a test db you didn't want in the image
+# *.local.db 
+
+# Test files or directories if not needed in production image
+# tests/
+# *.test.py
