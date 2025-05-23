@@ -261,6 +261,8 @@ def upload_products_excel():
 
     conn = None # Initialize for finally block
     try:
+        # Ensure the stream pointer is at the beginning
+        file.stream.seek(0) 
         # Try reading the file into a pandas DataFrame
         df = pd.read_excel(file.stream)
     except Exception as e:
