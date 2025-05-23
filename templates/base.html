@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Minecraft Store{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+    <div class="page-container">
+        <header>
+            <h1>{% block header_title %}Minecraft Store{% endblock %}</h1>
+            <nav>
+                <a href="{{ url_for('home') }}" class="minecraft-button">Home</a>
+                <a href="{{ url_for('admin_upload_page') }}" class="minecraft-button">Upload Products</a>
+                {# <a href="{{ url_for('search_page_route_name_placeholder') }}" class="minecraft-button">Search Products</a> #}
+                <a href="{{ url_for('cart_page') }}" id="cart-nav-link" class="minecraft-button">Cart (<span id="cart-item-count">0</span>)</a>
+            </nav>
+        </header>
+        <main class="content-wrap">
+            {% block content %}
+            <!-- Page specific content will go here -->
+            {% endblock %}
+        </main>
+        <footer>
+            <p>&copy; 2023 Minecraft Store. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+    <script>
+        function updateCartCountDisplay() {
+            fetch('/api/cart') // Assumes GET /api/cart returns total_items
+                .then(response => {
+                    if (!response.ok) {
+                        // If response is not OK, don't try to parse as JSON if it might not be
+                        // Log error or handle gracefully
+                        console.error('Failed to fetch cart data, status:', response.status);
+                        return null; // Indicate failure to next .then()
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const countElement = document.getElementById('cart-item-count');
+                    if (countElement && data && data.total_items !== undefined) {
+                        countElement.textContent = data.total_items;
+                    } else if (countElement && data === null) {
+                        // Optionally, handle the case where fetching failed (e.g., display 'N/A')
+                        // countElement.textContent = 'N/A'; 
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching or parsing cart count:', error);
+                    const countElement = document.getElementById('cart-item-count');
+                    // Optionally, display an error indicator in the cart count
+                    // if (countElement) countElement.textContent = '!';
+                });
+        }
+
+        // Call it on page load to initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCartCountDisplay();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout - Minecraft Store{% endblock %}
+
+{% block header_title %}Checkout{% endblock %}
+
+{% block content %}
+<div class="minecraft-container-box" id="checkout-page-container">
+    <h2>Review Your Order & Checkout</h2>
+    
+    <div id="checkout-order-summary" style="margin-bottom: 20px; padding-bottom:15px; border-bottom: 2px solid #606060;">
+        <h3>Order Summary</h3>
+        <p>Total Items: <span id="summary-total-items">Loading...</span></p>
+        <p>Total Price: $<span id="summary-total-price">Loading...</span></p>
+        <!-- Detailed item list could be added here if desired, or just totals -->
+    </div>
+
+    <form id="checkout-form">
+        <h3>Your Details</h3>
+        <div>
+            <label for="customer_name">Full Name:</label>
+            <input type="text" id="customer_name" name="customer_name" class="minecraft-input" required>
+        </div>
+        <div>
+            <label for="customer_email">Email Address:</label>
+            <input type="email" id="customer_email" name="customer_email" class="minecraft-input" required>
+        </div>
+        <button type="submit" id="place-order-btn" class="minecraft-button" style="background-color: #5cb85c; border-color: #4cae4c;">Place Order</button>
+    </form>
+    
+    <div id="checkout-messages" style="margin-top: 20px;">
+        <!-- Messages from the checkout process will appear here -->
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const summaryTotalItemsEl = document.getElementById('summary-total-items');
+    const summaryTotalPriceEl = document.getElementById('summary-total-price');
+    const checkoutForm = document.getElementById('checkout-form');
+    const customerNameInput = document.getElementById('customer_name');
+    const customerEmailInput = document.getElementById('customer_email');
+    const placeOrderBtn = document.getElementById('place-order-btn');
+    const checkoutMessagesDiv = document.getElementById('checkout-messages');
+    const orderSummaryDiv = document.getElementById('checkout-order-summary'); // Added for clearing
+
+    // escapeHtml function is now in static/js/utils.js and globally available
+
+    function loadOrderSummary() {
+        fetch('/api/cart')
+            .then(response => {
+                if (!response.ok) {
+                    // Try to parse error if server sends JSON error for cart loading
+                    return response.json().then(errData => {
+                        throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+                    }).catch(() => {
+                        // Fallback if error response is not JSON
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.total_items !== undefined && data.total_price !== undefined) {
+                    if (data.total_items === 0) {
+                        checkoutMessagesDiv.innerHTML = '<p class="message error">Your cart is empty. Please add items before checking out. Redirecting to cart page...</p>';
+                        placeOrderBtn.disabled = true;
+                        customerNameInput.disabled = true;
+                        customerEmailInput.disabled = true;
+                        // Redirect after a delay to allow message to be read
+                        setTimeout(() => { 
+                            if (window.location.pathname.endsWith('/checkout')) { // Prevent redirect loops if already on cart or other page
+                                window.location.href = '{{ url_for('cart_page') }}'; 
+                            }
+                        }, 3000); 
+                        return; // Stop further processing
+                    }
+                    summaryTotalItemsEl.textContent = data.total_items;
+                    summaryTotalPriceEl.textContent = parseFloat(data.total_price).toFixed(2);
+                    placeOrderBtn.disabled = false; // Ensure button is enabled if cart is not empty
+                } else {
+                    checkoutMessagesDiv.innerHTML = '<p class="message error">Could not load order summary. Cart data is missing or incomplete.</p>';
+                    placeOrderBtn.disabled = true;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading order summary:', error);
+                checkoutMessagesDiv.innerHTML = `<p class="message error">Error loading order summary: ${escapeHtml(error.message)}. Please try refreshing the page or contact support if the issue persists.</p>`;
+                placeOrderBtn.disabled = true;
+            });
+    }
+
+    checkoutForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        checkoutMessagesDiv.innerHTML = ''; // Clear previous messages
+
+        const name = customerNameInput.value.trim();
+        const email = customerEmailInput.value.trim();
+
+        if (!name || !email) {
+            checkoutMessagesDiv.innerHTML = '<p class="message error">Please fill in both your Full Name and Email Address.</p>';
+            return;
+        }
+        
+        // Basic email format validation
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            checkoutMessagesDiv.innerHTML = '<p class="message error">Please enter a valid email address.</p>';
+            return;
+        }
+
+        placeOrderBtn.disabled = true;
+        placeOrderBtn.textContent = 'Placing Order...';
+
+        fetch('/api/checkout/place_order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customer_name: name, customer_email: email })
+        })
+        .then(response => response.json().then(data => ({ok: response.ok, data: data, status: response.status }))) // Include status for better error handling
+        .then(result => {
+            if (result.ok) {
+                checkoutMessagesDiv.innerHTML = `<p class="message success">${escapeHtml(result.data.message || 'Order placed successfully!')} Order ID: <strong>${escapeHtml(result.data.order_id)}</strong></p>`;
+                checkoutForm.style.display = 'none'; // Hide the form
+                orderSummaryDiv.innerHTML = '<h3>Thank you for your order!</h3><p>Your items are on their way.</p>'; // Update summary
+                
+                if (typeof updateCartCountDisplay === 'function') {
+                    updateCartCountDisplay(); // Update header cart count (should now be 0)
+                }
+                // placeOrderBtn is already disabled and its text is "Placing Order..."
+                // No need to change it further as the form is hidden.
+            } else {
+                // Handle specific errors like "cart is empty" if the API returns it
+                if (result.data.error && result.data.error.toLowerCase().includes("cart is empty")) {
+                     checkoutMessagesDiv.innerHTML = `<p class="message error">${escapeHtml(result.data.error)} Redirecting to cart page...</p>`;
+                     setTimeout(() => { window.location.href = '{{ url_for('cart_page') }}'; }, 3000);
+                } else {
+                    checkoutMessagesDiv.innerHTML = `<p class="message error">Error placing order: ${escapeHtml(result.data.error || 'An unknown error occurred.')}</p>`;
+                }
+                placeOrderBtn.disabled = false; // Re-enable button on API error
+                placeOrderBtn.textContent = 'Place Order';
+            }
+        })
+        .catch(error => {
+            console.error('Place order fetch/network error:', error);
+            checkoutMessagesDiv.innerHTML = `<p class="message error">An unexpected network error occurred while placing your order. Please check your connection and try again.</p>`;
+            placeOrderBtn.disabled = false; // Re-enable button on network error
+            placeOrderBtn.textContent = 'Place Order';
+        });
+    });
+
+    // Initial load of order summary
+    loadOrderSummary();
+});
+</script>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Styles specific to checkout.html, can be moved or merged later */
+    #checkout-form div {
+        margin-bottom: 15px;
+    }
+    #checkout-form label {
+        display: block;
+        margin-bottom: 5px;
+        color: #DDDDDD;
+    }
+    /* Uses .minecraft-input and .minecraft-button from global style.css */
+    /* Uses .minecraft-container-box from global style.css */
+</style>
+{% endblock %}

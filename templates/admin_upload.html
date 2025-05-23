@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Upload Products{% endblock %}
+
+{% block header_title %}Upload Product Excel{% endblock %}
+
+{% block content %}
+<div class="minecraft-container-box"> {# Using a generic class for styling similar boxes #}
+    <h2>Upload Product Data</h2>
+    <p>Select an Excel file (.xlsx) with product information to add or update products in the store.</p>
+    <p>Expected columns: Name (required), Description, Price (required), Image URL, Stock Quantity.</p>
+    
+    <form id="upload-form" enctype="multipart/form-data">
+        <div>
+            <label for="excel_file_input">Choose Excel File:</label>
+            <input type="file" id="excel_file_input" name="excel_file" accept=".xlsx" required>
+        </div>
+        <button type="submit" class="minecraft-button">Upload File</button>
+    </form>
+    
+    <div id="upload-messages" style="margin-top: 20px;">
+        <!-- Messages from the upload process will appear here -->
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const uploadForm = document.getElementById('upload-form');
+        const fileInput = document.getElementById('excel_file_input');
+        const messagesDiv = document.getElementById('upload-messages');
+
+        uploadForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            messagesDiv.innerHTML = ''; // Clear previous messages
+
+            const file = fileInput.files[0];
+            if (!file) {
+                displayMessage('Please select a file to upload.', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('excel_file', file);
+
+            // Optional: display an info message while uploading
+            displayMessage('Uploading file... Please wait.', 'info'); // 'info' class can be styled like 'success'/'error'
+
+            fetch('/api/upload_products_excel', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json().then(data => ({ ok: response.ok, status: response.status, body: data })))
+            .then(result => {
+                messagesDiv.innerHTML = ''; // Clear "Uploading..." message
+                if (result.ok) {
+                    let successMsg = `<strong>Success!</strong> ${result.body.message || 'File processed.'}`;
+                    if (result.body.added !== undefined) {
+                        successMsg += ` Added: ${result.body.added}.`;
+                    }
+                    if (result.body.updated !== undefined) {
+                        successMsg += ` Updated: ${result.body.updated}.`;
+                    }
+                    displayMessage(successMsg, 'success');
+                    fileInput.value = ''; // Clear the file input
+                } else {
+                    let errorMsg = `<strong>Error (Status ${result.status}):</strong> ${result.body.error || 'Unknown error'}`;
+                    if (result.body.details && Array.isArray(result.body.details) && result.body.details.length > 0) {
+                        errorMsg += '<ul>';
+                        result.body.details.forEach(detail => {
+                            // Using escapeHtml as good practice, though server-side errors should be safe.
+                            errorMsg += `<li>${escapeHtml(detail)}</li>`; 
+                        });
+                        errorMsg += '</ul>';
+                    }
+                    displayMessage(errorMsg, 'error');
+                }
+            })
+            .catch(error => {
+                messagesDiv.innerHTML = ''; // Clear "Uploading..." message
+                console.error('Fetch error:', error);
+                displayMessage(`<strong>Network Error:</strong> Could not connect to the server. ${error.message}`, 'error');
+            });
+        });
+
+        function displayMessage(html, type) {
+            // Ensure this matches the CSS classes used (e.g., in admin_upload.html <style> or main.css)
+            // The prompt implies .message, .success, .error are styled. Adding .info as a possibility.
+            messagesDiv.innerHTML = `<div class="message ${type}">${html}</div>`;
+        }
+        
+        // escapeHtml function is now in static/js/utils.js and globally available
+    });
+</script>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Basic styling for the form elements, can be moved to main CSS later */
+    /* .minecraft-container-box is now in static/style.css */
+    /* .minecraft-button is now in static/style.css */
+
+    #upload-form div {
+        margin-bottom: 15px;
+    }
+    #upload-form label {
+        display: block;
+        margin-bottom: 5px;
+        color: #DDDDDD;
+    }
+    #upload-form input[type="file"] { /* This styling is specific to file input, might differ from general .minecraft-input */
+        background-color: #A0A0A0;
+        border: 2px solid #505050;
+        padding: 8px;
+        color: #202020;
+        width: calc(100% - 20px); 
+    }
+    /* Styling for upload messages */
+    #upload-messages .message {
+        padding: 10px;
+        margin-bottom:10px;
+        border-radius: 3px; 
+    }
+    #upload-messages .message.success {
+        background-color: #5cb85c; 
+        color: white;
+        border: 2px solid #4cae4c;
+    }
+    #upload-messages .message.error {
+        background-color: #d9534f; 
+        color: white;
+        border: 2px solid #d43f3a;
+    }
+    #upload-messages ul {
+       list-style-type: disc;
+       margin-left: 20px;
+    }
+</style>
+{% endblock %}

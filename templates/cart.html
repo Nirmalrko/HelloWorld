@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Your Shopping Cart - Minecraft Store{% endblock %}
+
+{% block header_title %}Your Shopping Cart{% endblock %}
+
+{% block content %}
+<div class="minecraft-container-box" id="cart-page-container">
+    <div id="cart-items-container">
+        <!-- Cart items will be dynamically loaded here by JavaScript -->
+        <p>Loading your cart...</p> 
+        {# Placeholder for what a cart item row might look like - for JS reference later
+        <div class="cart-item">
+            <img src="https://via.placeholder.com/80x80.png?text=Item" alt="Product Image" class="cart-item-image">
+            <div class="cart-item-details">
+                <h3 class="cart-item-name">Sample Product</h3>
+                <p class="cart-item-price">$9.99</p>
+            </div>
+            <div class="cart-item-quantity">
+                <label for="qty-product-1">Qty:</label>
+                <input type="number" id="qty-product-1" class="minecraft-input quantity-input" value="1" min="0" data-product-id="1"> 
+            </div>
+            <p class="cart-item-subtotal">$9.99</p>
+            <button class="minecraft-button remove-item-btn" data-product-id="1">&times;</button>
+        </div>
+        #}
+    </div>
+
+    <div id="cart-summary" style="margin-top: 20px; padding-top: 20px; border-top: 4px solid #505050;">
+        <h3>Cart Totals</h3>
+        <p>Total Items: <span id="cart-total-items">0</span></p>
+        <p>Total Price: $<span id="cart-total-price">0.00</span></p>
+        <div style="margin-top: 20px;">
+            <button id="clear-cart-btn" class="minecraft-button" style="background-color: #d9534f; border-color: #d43f3a;">Clear Cart</button>
+            <a href="{{ url_for('checkout_page') }}" id="proceed-to-checkout-btn" class="minecraft-button" style="background-color: #5cb85c; border-color: #4cae4c; float: right;">Proceed to Checkout</a>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const cartItemsContainer = document.getElementById('cart-items-container');
+    const cartTotalItemsEl = document.getElementById('cart-total-items');
+    const cartTotalPriceEl = document.getElementById('cart-total-price');
+    const clearCartBtn = document.getElementById('clear-cart-btn');
+    // const proceedToCheckoutBtn = document.getElementById('proceed-to-checkout-btn'); // For later
+
+    // escapeHtml function is now in static/js/utils.js and globally available
+
+    function renderCart(data) {
+        cartItemsContainer.innerHTML = ''; // Clear previous items or "Loading..."
+
+        if (!data || !data.cart_items || Object.keys(data.cart_items).length === 0) {
+            cartItemsContainer.innerHTML = '<p>Your cart is empty.</p>';
+            cartTotalItemsEl.textContent = '0';
+            cartTotalPriceEl.textContent = '0.00';
+            if (typeof updateCartCountDisplay === 'function') updateCartCountDisplay();
+            return;
+        }
+
+        const items = data.cart_items;
+        for (const productIdStr in items) {
+            if (items.hasOwnProperty(productIdStr)) {
+                const item = items[productIdStr];
+                // Ensure price and quantity are numbers, default to 0 if not
+                const price = parseFloat(item.price) || 0;
+                const quantity = parseInt(item.quantity) || 0;
+                const itemSubtotal = (price * quantity).toFixed(2);
+                
+                const itemHtml = `
+                    <div class="cart-item" data-product-id="${escapeHtml(productIdStr)}">
+                        <img src="${escapeHtml(item.image_url || 'https://via.placeholder.com/80x80.png?text=No+Img')}" alt="${escapeHtml(item.name)}" class="cart-item-image">
+                        <div class="cart-item-details">
+                            <h3 class="cart-item-name">${escapeHtml(item.name)}</h3>
+                            <p class="cart-item-price">$${price.toFixed(2)}</p>
+                        </div>
+                        <div class="cart-item-quantity">
+                            <label for="qty-${productIdStr}" style="display: block; font-size: 0.8em; margin-bottom: 2px;">Qty:</label>
+                            <input type="number" id="qty-${productIdStr}" class="minecraft-input quantity-input" value="${quantity}" min="0" data-product-id="${escapeHtml(productIdStr)}">
+                        </div>
+                        <p class="cart-item-subtotal">$${itemSubtotal}</p>
+                        <button class="minecraft-button remove-item-btn" data-product-id="${escapeHtml(productIdStr)}">&times;</button>
+                    </div>
+                `;
+                cartItemsContainer.innerHTML += itemHtml;
+            }
+        }
+        cartTotalItemsEl.textContent = data.total_items || 0;
+        cartTotalPriceEl.textContent = (parseFloat(data.total_price) || 0).toFixed(2);
+        if (typeof updateCartCountDisplay === 'function') updateCartCountDisplay();
+    }
+
+    function loadCart() {
+        cartItemsContainer.innerHTML = '<p>Loading your cart...</p>';
+        fetch('/api/cart')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => renderCart(data))
+            .catch(error => {
+                console.error('Error loading cart:', error);
+                cartItemsContainer.innerHTML = '<p class="message error" style="color: #d9534f;">Could not load your cart. Please try again.</p>';
+            });
+    }
+
+    // Event delegation for quantity changes and remove buttons
+    cartItemsContainer.addEventListener('change', function(event) {
+        if (event.target.classList.contains('quantity-input')) {
+            const productId = event.target.dataset.productId;
+            const newQuantity = parseInt(event.target.value);
+
+            if (isNaN(newQuantity)) { 
+                loadCart(); 
+                return;
+            }
+            
+            fetch(`/api/cart/update/${productId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity: newQuantity })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                    loadCart(); 
+                } else {
+                    renderCart(data); 
+                }
+            })
+            .catch(error => {
+                console.error('Error updating quantity:', error);
+                alert('Could not update quantity.');
+                loadCart(); 
+            });
+        }
+    });
+
+    cartItemsContainer.addEventListener('click', function(event) {
+        if (event.target.classList.contains('remove-item-btn')) {
+            const productId = event.target.dataset.productId;
+            if (confirm('Remove this item from your cart?')) {
+                fetch(`/api/cart/remove/${productId}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(`Error: ${data.error}`);
+                    }
+                    renderCart(data); 
+                })
+                .catch(error => {
+                    console.error('Error removing item:', error);
+                    alert('Could not remove item.');
+                    loadCart();
+                });
+            }
+        }
+    });
+
+    clearCartBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to clear your entire cart?')) {
+            fetch('/api/cart/clear', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                }
+                renderCart(data); 
+            })
+            .catch(error => {
+                console.error('Error clearing cart:', error);
+                alert('Could not clear cart.');
+                loadCart(); 
+            });
+        }
+    });
+
+    // Initial load
+    loadCart();
+});
+</script>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Styles specific to cart.html, can be moved to static/style.css */
+    .cart-item {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 10px 0;
+        border-bottom: 2px solid #606060;
+    }
+    .cart-item:last-child {
+        border-bottom: none;
+    }
+    .cart-item-image {
+        width: 80px;
+        height: 80px;
+        border: 3px solid #505050;
+        object-fit: cover; /* Ensure image covers the area */
+        background-color: #A0A0A0; /* Placeholder bg */
+    }
+    .cart-item-details {
+        flex-grow: 1;
+    }
+    .cart-item-name {
+        font-size: 1.1em;
+        color: #FFFFFF;
+        margin: 0 0 5px 0;
+    }
+    .cart-item-price {
+        font-size: 0.9em;
+        color: #DDDDDD;
+        margin: 0;
+    }
+    .cart-item-quantity input.quantity-input {
+        width: 60px; /* Smaller width for quantity */
+        padding: 8px; /* Adjust padding */
+        font-size: 0.9em; /* Adjust font size */
+    }
+    .cart-item-subtotal {
+        font-weight: bold;
+        min-width: 70px; /* Ensure space for subtotal */
+        text-align: right;
+    }
+    .remove-item-btn {
+       padding: 5px 10px;
+       font-size: 1.2em; /* Make 'x' bigger */
+       background-color: #c06060; /* Reddish tint */
+       border-color: #a04040;
+    }
+    .remove-item-btn:hover {
+       background-color: #e07070;
+    }
+    #cart-summary h3 {
+        margin-top: 0;
+        color: #FFFFFF;
+    }
+    /* Ensure minecraft-container-box is styled from global CSS */
+</style>
+{% endblock %}
